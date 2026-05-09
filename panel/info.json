@@ -1,0 +1,11 @@
+{
+  "name": "MacCmsWall",
+  "title": "MacCmsWall",
+  "version": "1.0.0",
+  "author": "MacCmsWall Team",
+  "type": "工具",
+  "date": "2026-05-09",
+  "home": "https://github.com/xxx/MacCmsWall",
+  "ps": "基于 chattr +i 的网站防篡改插件，支持 BT 与 aaPanel。",
+  "shell": "install.sh"
+}

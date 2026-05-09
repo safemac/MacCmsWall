@@ -1,0 +1,378 @@
+:root {
+    --bg-top: #f4efe5;
+    --bg-bottom: #d9e6ee;
+    --ink: #16212c;
+    --ink-soft: #43576a;
+    --card: rgba(255, 255, 255, 0.86);
+    --card-border: rgba(22, 33, 44, 0.1);
+    --brand: #176b87;
+    --brand-strong: #0f4960;
+    --accent: #d47b3f;
+    --ok: #157f3b;
+    --warn: #9b6a13;
+    --danger: #9f2f2f;
+    --shadow: 0 20px 40px rgba(22, 33, 44, 0.12);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Source Han Sans SC", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    color: var(--ink);
+    background: linear-gradient(140deg, var(--bg-top), var(--bg-bottom));
+    overflow-x: hidden;
+}
+
+.bg-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.orb-1 {
+    width: 360px;
+    height: 360px;
+    background: #f5b46a;
+    top: -120px;
+    right: -80px;
+}
+
+.orb-2 {
+    width: 420px;
+    height: 420px;
+    background: #7ac6d2;
+    bottom: -180px;
+    left: -100px;
+}
+
+.app-shell {
+    position: relative;
+    z-index: 1;
+    max-width: 1280px;
+    margin: 24px auto;
+    padding: 0 16px 24px;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.topbar h1 {
+    margin: 0;
+    font-size: 34px;
+    letter-spacing: 1px;
+}
+
+.topbar p {
+    margin: 6px 0 0;
+    color: var(--ink-soft);
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.badge {
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.badge-ok {
+    background: rgba(21, 127, 59, 0.14);
+    color: var(--ok);
+}
+
+.badge-warn {
+    background: rgba(155, 106, 19, 0.12);
+    color: var(--warn);
+}
+
+.tabs {
+    display: inline-flex;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.6);
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+}
+
+.tab {
+    border: none;
+    background: transparent;
+    padding: 10px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--ink-soft);
+}
+
+.tab.active {
+    background: linear-gradient(145deg, var(--brand), var(--brand-strong));
+    color: #fff;
+}
+
+.panel {
+    display: none;
+    animation: rise-in 0.28s ease;
+}
+
+.panel.active {
+    display: block;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.split-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 14px;
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 18px;
+}
+
+.card h3 {
+    margin: 0 0 8px;
+}
+
+.card .num {
+    font-size: 34px;
+    font-weight: 800;
+    margin: 4px 0;
+    color: var(--brand-strong);
+}
+
+.card small {
+    color: var(--ink-soft);
+}
+
+.mode-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.mode-pill {
+    border-radius: 999px;
+    padding: 8px 12px;
+    background: rgba(23, 107, 135, 0.12);
+    color: var(--brand-strong);
+    font-weight: 700;
+}
+
+.form-card {
+    margin-bottom: 14px;
+}
+
+.site-form {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    align-items: end;
+}
+
+.site-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--ink-soft);
+}
+
+input,
+select,
+button {
+    font-family: inherit;
+    font-size: 14px;
+}
+
+input,
+select {
+    width: 100%;
+    border: 1px solid rgba(22, 33, 44, 0.2);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #fff;
+}
+
+input:focus,
+select:focus {
+    outline: 2px solid rgba(23, 107, 135, 0.3);
+    border-color: var(--brand);
+}
+
+.btn {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.btn-primary {
+    background: linear-gradient(145deg, var(--brand), var(--brand-strong));
+    color: #fff;
+}
+
+.btn-secondary {
+    background: rgba(22, 33, 44, 0.08);
+    color: var(--ink);
+}
+
+.btn-danger {
+    background: rgba(159, 47, 47, 0.15);
+    color: var(--danger);
+}
+
+.btn-mini {
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.table-wrap,
+.log-wrap {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 980px;
+}
+
+thead th {
+    text-align: left;
+    font-size: 12px;
+    color: var(--ink-soft);
+    border-bottom: 1px solid rgba(22, 33, 44, 0.15);
+    padding: 10px 8px;
+}
+
+tbody td {
+    border-bottom: 1px dashed rgba(22, 33, 44, 0.12);
+    padding: 10px 8px;
+    vertical-align: top;
+}
+
+.status-on {
+    color: var(--ok);
+    font-weight: 700;
+}
+
+.status-off {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.toast {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    max-width: 420px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    color: #fff;
+    background: rgba(22, 33, 44, 0.9);
+    box-shadow: var(--shadow);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s ease;
+    pointer-events: none;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 1024px) {
+    .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .split-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .site-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .app-shell {
+        margin: 14px auto;
+    }
+
+    .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cards {
+        grid-template-columns: 1fr;
+    }
+
+    .site-form {
+        grid-template-columns: 1fr;
+    }
+}

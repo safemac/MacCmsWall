@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# 按数据库中的 locked=1 状态重新恢复加锁，用于异常恢复场景。
+
+set -u
+set -o pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/common.sh"
+
+SITE_ID="${1:-}"
+DB_PATH="${2:-}"
+LOG_FILE="${3:-}"
+
+if [ -z "${SITE_ID}" ] || [ -z "${DB_PATH}" ]; then
+    echo "用法: restore.sh <site_id> <db_path> [log_file]" >&2
+    exit 1
+fi
+
+if ! [[ "${SITE_ID}" =~ ^[0-9]+$ ]]; then
+    echo "site_id 必须为数字" >&2
+    exit 1
+fi
+
+if ! need_cmd sqlite3; then
+    echo "缺少 sqlite3 命令" >&2
+    exit 1
+fi
+
+if ! need_cmd chattr; then
+    echo "缺少 chattr 命令" >&2
+    exit 1
+fi
+
+restore_count=0
+miss_count=0
+fail_count=0
+now="$(timestamp)"
+
+while IFS=$'\t' read -r file_id file_path; do
+    if [ -z "${file_id}" ] || [ -z "${file_path}" ]; then
+        continue
+    fi
+
+    if [ ! -e "${file_path}" ]; then
+        miss_count=$((miss_count + 1))
+        continue
+    fi
+
+    if chattr +i -- "${file_path}" >/dev/null 2>&1; then
+        restore_count=$((restore_count + 1))
+        sqlite3 "${DB_PATH}" "UPDATE files SET locked=1,updated_at=${now} WHERE id=${file_id};" >/dev/null 2>&1 || true
+    else
+        fail_count=$((fail_count + 1))
+        log_msg "${LOG_FILE}" "WARN" "恢复加锁失败 file=${file_path}"
+    fi
+done < <(sqlite3 -batch -noheader -separator $'\t' "${DB_PATH}" "SELECT id,file_path FROM files WHERE site_id=${SITE_ID} AND locked=1;")
+
+log_msg "${LOG_FILE}" "INFO" "恢复完成 site_id=${SITE_ID} restore_count=${restore_count} miss_count=${miss_count} fail_count=${fail_count}"
+
+printf "RESTORE_COUNT=%s\n" "${restore_count}"
+printf "MISS_COUNT=%s\n" "${miss_count}"
+printf "FAIL_COUNT=%s\n" "${fail_count}"
+
+if [ "${fail_count}" -gt 0 ]; then
+    exit 3
+fi
+
+exit 0

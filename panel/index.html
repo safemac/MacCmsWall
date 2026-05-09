@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MacCmsWall 防篡改管理</title>
+    <link rel="stylesheet" href="./static/style.css" />
+</head>
+<body>
+    <!-- 页面背景装饰 -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <main class="app-shell">
+        <!-- 顶部标题区 -->
+        <header class="topbar">
+            <div>
+                <h1>MacCmsWall</h1>
+                <p>基于 chattr +i 的网站强防篡改控制台</p>
+            </div>
+            <div class="topbar-actions">
+                <span id="healthBadge" class="badge badge-warn">检测中...</span>
+                <button id="btnRefreshAll" class="btn btn-primary">刷新全局数据</button>
+            </div>
+        </header>
+
+        <!-- 导航标签 -->
+        <nav class="tabs" id="tabs">
+            <button class="tab active" data-tab="dashboard">Dashboard</button>
+            <button class="tab" data-tab="sites">网站管理</button>
+            <button class="tab" data-tab="logs">日志管理</button>
+        </nav>
+
+        <!-- Dashboard -->
+        <section id="panel-dashboard" class="panel active">
+            <div class="cards" id="dashboardCards">
+                <article class="card">
+                    <h3>已保护网站</h3>
+                    <p id="statProtectedSites" class="num">0</p>
+                    <small>当前开启防护的网站数量</small>
+                </article>
+                <article class="card">
+                    <h3>网站总数</h3>
+                    <p id="statTotalSites" class="num">0</p>
+                    <small>已登记的网站总数</small>
+                </article>
+                <article class="card">
+                    <h3>已锁定文件</h3>
+                    <p id="statLockedFiles" class="num">0</p>
+                    <small>数据库标记为 locked=1 的文件</small>
+                </article>
+                <article class="card">
+                    <h3>文件总数</h3>
+                    <p id="statTotalFiles" class="num">0</p>
+                    <small>当前索引文件总量</small>
+                </article>
+            </div>
+
+            <div class="split-grid">
+                <article class="card">
+                    <h3>模式分布</h3>
+                    <div id="modeStats" class="mode-stats"></div>
+                </article>
+                <article class="card">
+                    <h3>最近操作</h3>
+                    <p id="lastActionText">暂无记录</p>
+                    <small id="lastActionTime">-</small>
+                </article>
+            </div>
+        </section>
+
+        <!-- 网站管理 -->
+        <section id="panel-sites" class="panel">
+            <article class="card form-card">
+                <h3>新增网站</h3>
+                <form id="addSiteForm" class="site-form">
+                    <label>
+                        <span>网站名称</span>
+                        <input id="siteName" name="site_name" type="text" placeholder="例如：主站" required />
+                    </label>
+                    <label>
+                        <span>网站路径</span>
+                        <input id="sitePath" name="site_path" type="text" placeholder="例如：/www/wwwroot/demo.com" required />
+                    </label>
+                    <label>
+                        <span>防护模式</span>
+                        <select id="siteMode" name="mode">
+                            <option value="strict">严格全锁模式</option>
+                            <option value="maccms">MACCMS 兼容模式</option>
+                        </select>
+                    </label>
+                    <button type="submit" class="btn btn-primary">添加网站</button>
+                </form>
+            </article>
+
+            <article class="card">
+                <div class="card-head">
+                    <h3>网站列表</h3>
+                    <button id="btnRefreshSites" class="btn btn-secondary">刷新列表</button>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>网站名称</th>
+                                <th>网站路径</th>
+                                <th>防护状态</th>
+                                <th>模式</th>
+                                <th>文件数</th>
+                                <th>已锁数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="siteTableBody"></tbody>
+                    </table>
+                </div>
+            </article>
+        </section>
+
+        <!-- 日志管理 -->
+        <section id="panel-logs" class="panel">
+            <article class="card">
+                <div class="card-head">
+                    <h3>系统日志</h3>
+                    <div class="row-actions">
+                        <select id="logLimit">
+                            <option value="100">最近 100 条</option>
+                            <option value="300" selected>最近 300 条</option>
+                            <option value="1000">最近 1000 条</option>
+                        </select>
+                        <button id="btnRefreshLogs" class="btn btn-secondary">刷新日志</button>
+                        <button id="btnClearLogs" class="btn btn-danger">清空日志</button>
+                    </div>
+                </div>
+                <div class="log-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>级别</th>
+                                <th>动作</th>
+                                <th>站点ID</th>
+                                <th>消息</th>
+                                <th>时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody"></tbody>
+                    </table>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <!-- 浮动消息 -->
+    <div id="toast" class="toast"></div>
+
+    <script src="./static/app.js"></script>
+</body>
+</html>
