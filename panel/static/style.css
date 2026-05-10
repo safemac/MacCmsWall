@@ -205,6 +205,22 @@ body {
     color: var(--ink-soft);
 }
 
+.path-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.path-picker-row input {
+    flex: 1 1 auto;
+}
+
+.path-picker-row .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 10px 12px;
+}
+
 input,
 select,
 button {
@@ -355,6 +371,11 @@ tbody td {
 
     .site-form {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .path-picker-row {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
 

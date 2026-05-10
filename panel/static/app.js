@@ -30,6 +30,8 @@
         lastActionText: document.getElementById("lastActionText"),
         lastActionTime: document.getElementById("lastActionTime"),
         addSiteForm: document.getElementById("addSiteForm"),
+        sitePath: document.getElementById("sitePath"),
+        btnPickSitePath: document.getElementById("btnPickSitePath"),
         siteTableBody: document.getElementById("siteTableBody"),
         btnRefreshAll: document.getElementById("btnRefreshAll"),
         btnRefreshSites: document.getElementById("btnRefreshSites"),
@@ -134,6 +136,174 @@
             btn.textContent = btn.dataset.oldText;
         }
         btn.disabled = false;
+    }
+
+    function normalizePathText(raw) {
+        if (raw === undefined || raw === null) {
+            return "";
+        }
+
+        let text = String(raw).trim();
+        if (!text) {
+            return "";
+        }
+
+        text = text.replace(/^file:\/\//i, "");
+        text = text.replace(/\\/g, "/");
+        return text;
+    }
+
+    function extractPathValue(value, depth = 0) {
+        if (depth > 4 || value === undefined || value === null) {
+            return "";
+        }
+
+        if (typeof value === "string" || typeof value === "number") {
+            const text = normalizePathText(value);
+            return text.includes("/") ? text : "";
+        }
+
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                const nested = extractPathValue(item, depth + 1);
+                if (nested) {
+                    return nested;
+                }
+            }
+            return "";
+        }
+
+        if (typeof value === "object") {
+            const keys = [
+                "path", "dir", "f_path", "file_path", "filepath",
+                "fullpath", "full_path", "selected", "selection",
+                "value", "msg", "data"
+            ];
+
+            for (const key of keys) {
+                if (Object.prototype.hasOwnProperty.call(value, key)) {
+                    const nested = extractPathValue(value[key], depth + 1);
+                    if (nested) {
+                        return nested;
+                    }
+                }
+            }
+        }
+
+        return "";
+    }
+
+    function getPathPickerCandidates() {
+        const result = [];
+        const seen = new Set();
+        const btObj = window.bt && typeof window.bt === "object" ? window.bt : null;
+
+        const addCandidate = (name, fn, context) => {
+            if (typeof fn !== "function") {
+                return;
+            }
+
+            const key = `${context === window ? "window" : "bt"}:${name}`;
+            if (seen.has(key)) {
+                return;
+            }
+            seen.add(key);
+            result.push({ name, fn, context });
+        };
+
+        if (btObj) {
+            const preferNames = ["select_path", "selectPath", "choosePath", "openPath", "open_path", "openDir"];
+            preferNames.forEach((name) => addCandidate(name, btObj[name], btObj));
+
+            Object.keys(btObj)
+                .filter((name) => /path|dir|file/i.test(name))
+                .slice(0, 12)
+                .forEach((name) => addCandidate(name, btObj[name], btObj));
+        }
+
+        ["select_path", "selectPath", "choosePath", "openPath", "open_path", "openDir"].forEach((name) => {
+            addCandidate(name, window[name], window);
+        });
+
+        return result;
+    }
+
+    function waitPickerResult(invoke, timeoutMs = 30000) {
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const done = (ret) => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                resolve(ret);
+            };
+
+            try {
+                const ret = invoke(done);
+                if (ret && typeof ret.then === "function") {
+                    ret.then(done).catch(reject);
+                } else if (ret !== undefined && ret !== null && ret !== "") {
+                    done(ret);
+                }
+            } catch (err) {
+                reject(err);
+                return;
+            }
+
+            window.setTimeout(() => {
+                if (!settled) {
+                    reject(new Error("path picker timeout"));
+                }
+            }, timeoutMs);
+        });
+    }
+
+    async function tryInvokePathPicker(candidate, defaultPath) {
+        const options = {
+            title: "选择网站目录",
+            path: defaultPath,
+            dir: true,
+            type: "dir",
+        };
+
+        const attempts = [
+            (done) => candidate.fn.call(candidate.context, options, done),
+            (done) => candidate.fn.call(candidate.context, done, options),
+            (done) => candidate.fn.call(candidate.context, options.path, done),
+        ];
+
+        for (const invoke of attempts) {
+            try {
+                const ret = await waitPickerResult(invoke, 30000);
+                const path = extractPathValue(ret);
+                if (path) {
+                    return path;
+                }
+            } catch (_err) {
+                // 继续尝试下一个签名。
+            }
+        }
+
+        return "";
+    }
+
+    async function pickSitePath(defaultPath = "") {
+        const initialPath = normalizePathText(defaultPath) || "/www/wwwroot";
+        const candidates = getPathPickerCandidates();
+
+        for (const candidate of candidates) {
+            const path = await tryInvokePathPicker(candidate, initialPath);
+            if (path) {
+                return path;
+            }
+        }
+
+        const manual = window.prompt("未检测到可用路径选择器，请手动输入网站绝对路径：", initialPath);
+        if (manual === null) {
+            return "";
+        }
+        return normalizePathText(manual);
     }
 
     function renderDashboard() {
@@ -355,6 +525,25 @@
                 showToast(err.message, true);
             }
         });
+
+        if (el.btnPickSitePath) {
+            el.btnPickSitePath.addEventListener("click", async () => {
+                setLoading(el.btnPickSitePath, true);
+                try {
+                    const selectedPath = await pickSitePath(el.sitePath ? el.sitePath.value : "");
+                    if (selectedPath && el.sitePath) {
+                        el.sitePath.value = selectedPath;
+                        showToast("已填充网站路径");
+                    } else {
+                        showToast("未选择路径，保留当前输入");
+                    }
+                } catch (_err) {
+                    showToast("路径选择器不可用，请手动输入网站路径", true);
+                } finally {
+                    setLoading(el.btnPickSitePath, false);
+                }
+            });
+        }
 
         el.addSiteForm.addEventListener("submit", async (event) => {
             event.preventDefault();
