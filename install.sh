@@ -65,6 +65,34 @@ select_plugin_dir() {
     PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 }
 
+# 判断 install.sh 是否运行在面板插件目录中。
+is_plugin_runtime_dir() {
+    local real_dir
+    real_dir="$(cd "${SCRIPT_DIR}" && pwd -P)"
+
+    case "${real_dir}" in
+        "${PANEL_ROOT}/plugin/"*)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
+
+# 判断目录是否具备 BT 插件根结构。
+is_plugin_root_layout() {
+    local target_dir="$1"
+
+    [ -f "${target_dir}/info.json" ] || return 1
+    [ -f "${target_dir}/index.html" ] || return 1
+    [ -d "${target_dir}/scripts" ] || return 1
+    if [ ! -f "${target_dir}/maccmswall_main.py" ] && [ ! -f "${target_dir}/main.py" ]; then
+        return 1
+    fi
+
+    return 0
+}
+
 detect_panel() {
     if [ ! -d "${PANEL_ROOT}" ]; then
         die "未检测到面板目录 ${PANEL_ROOT}"
@@ -409,6 +437,33 @@ ensure_plugin_alias() {
     ln -s "${PLUGIN_DIR}" "${alias_dir}" >/dev/null 2>&1 && log "已创建兼容别名: ${alias_dir}" || true
 }
 
+# 若历史版本缺少 name_main.py，则自动补齐兼容入口。
+ensure_bt_entry_wrapper() {
+    local lower_entry="${PLUGIN_DIR}/maccmswall_main.py"
+
+    if [ -f "${lower_entry}" ]; then
+        return 0
+    fi
+
+    if [ ! -f "${PLUGIN_DIR}/main.py" ]; then
+        return 0
+    fi
+
+    cat > "${lower_entry}" <<'PY'
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+from main import main as _Main
+
+
+class maccmswall_main(_Main):
+    pass
+
+
+class MacCmsWall_main(maccmswall_main):
+    pass
+PY
+}
+
 # 在 Linux 侧补齐历史入口文件名，兼容 name=MacCmsWall 的旧路由。
 ensure_legacy_python_entry() {
     local lower_entry="${PLUGIN_DIR}/maccmswall_main.py"
@@ -417,6 +472,52 @@ ensure_legacy_python_entry() {
     if [ -f "${lower_entry}" ] && [ ! -f "${legacy_entry}" ]; then
         cp -a "${lower_entry}" "${legacy_entry}" >/dev/null 2>&1 || true
     fi
+}
+
+run_panel_local_install() {
+    require_root
+    detect_panel
+
+    if is_plugin_runtime_dir; then
+        PLUGIN_DIR="$(cd "${SCRIPT_DIR}" && pwd -P)"
+    else
+        select_plugin_dir
+    fi
+
+    is_plugin_root_layout "${PLUGIN_DIR}" || die "插件目录结构不完整: ${PLUGIN_DIR}"
+
+    chmod +x "${PLUGIN_DIR}/install.sh" "${PLUGIN_DIR}/uninstall.sh" "${PLUGIN_DIR}/update.sh" "${PLUGIN_DIR}/onekey.sh" >/dev/null 2>&1 || true
+    chmod +x "${PLUGIN_DIR}/scripts"/*.sh >/dev/null 2>&1 || true
+
+    ensure_bt_entry_wrapper
+    ensure_plugin_alias
+    ensure_legacy_python_entry
+
+    if command -v sqlite3 >/dev/null 2>&1; then
+        init_database
+    else
+        warn "未检测到 sqlite3，跳过数据库初始化"
+    fi
+
+    refresh_plugin_cache
+
+    log "插件本地安装收尾完成: ${PLUGIN_DIR}"
+    if restart_panel; then
+        log "面板重启成功"
+    else
+        warn "未能自动重启面板，请手动执行: bt restart 或 /etc/init.d/aapanel restart"
+    fi
+}
+
+run_panel_local_uninstall() {
+    require_root
+
+    if [ -x "${SCRIPT_DIR}/uninstall.sh" ]; then
+        bash "${SCRIPT_DIR}/uninstall.sh"
+        return 0
+    fi
+
+    die "缺少卸载脚本: ${SCRIPT_DIR}/uninstall.sh"
 }
 
 # 强制刷新插件缓存，避免文件已部署但列表页未及时刷新。
@@ -503,6 +604,27 @@ restart_panel() {
 
 main() {
     trap cleanup EXIT
+
+    case "${1:-}" in
+        install)
+            run_panel_local_install
+            return 0
+            ;;
+        uninstall)
+            run_panel_local_uninstall
+            return 0
+            ;;
+        "")
+            if is_plugin_runtime_dir && is_plugin_root_layout "${SCRIPT_DIR}"; then
+                log "检测到面板插件目录环境，执行本地安装收尾流程"
+                run_panel_local_install
+                return 0
+            fi
+            ;;
+        *)
+            warn "未知参数: ${1}，按标准安装流程继续"
+            ;;
+    esac
 
     require_root
     select_plugin_dir
