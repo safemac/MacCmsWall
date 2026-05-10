@@ -236,6 +236,10 @@ copy_source_to_plugin() {
             cp -a "${SOURCE_DIR}/update.sh" "${PLUGIN_DIR}/update.sh" || die "复制 update.sh 失败"
         fi
 
+        if [ -f "${SOURCE_DIR}/onekey.sh" ]; then
+            cp -a "${SOURCE_DIR}/onekey.sh" "${PLUGIN_DIR}/onekey.sh" || die "复制 onekey.sh 失败"
+        fi
+
         if [ -f "${SOURCE_DIR}/README.md" ]; then
             cp -a "${SOURCE_DIR}/README.md" "${PLUGIN_DIR}/README.md" || die "复制 README.md 失败"
         fi
@@ -300,7 +304,7 @@ deploy_plugin() {
 
     copy_source_to_plugin
 
-    chmod +x "${PLUGIN_DIR}/install.sh" "${PLUGIN_DIR}/uninstall.sh" "${PLUGIN_DIR}/update.sh" >/dev/null 2>&1 || true
+    chmod +x "${PLUGIN_DIR}/install.sh" "${PLUGIN_DIR}/uninstall.sh" "${PLUGIN_DIR}/update.sh" "${PLUGIN_DIR}/onekey.sh" >/dev/null 2>&1 || true
     chmod +x "${PLUGIN_DIR}/scripts"/*.sh >/dev/null 2>&1 || true
 }
 

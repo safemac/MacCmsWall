@@ -29,6 +29,7 @@ MacCmsWall 是一个基于 Linux `chattr +i` 的网站防篡改插件，面向 B
 
 ```text
 MacCmsWall
+├── onekey.sh
 ├── install.sh
 ├── uninstall.sh
 ├── README.md
@@ -55,7 +56,29 @@ MacCmsWall
 ## 安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
+```
+
+## 一键傻瓜智能模式（推荐）
+
+默认就是一行命令自动处理：
+
+- 未安装时自动安装
+- 已安装时自动更新
+- 自动识别 BT / aaPanel
+
+如需指定动作，可在同一行增加环境变量：
+
+```bash
+MACCMSWALL_ACTION=install curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
+MACCMSWALL_ACTION=update curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
+MACCMSWALL_ACTION=uninstall curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
+```
+
+支持自定义分支与仓库：
+
+```bash
+MACCMSWALL_REPO=https://github.com/safemac/MacCmsWall.git MACCMSWALL_BRANCH=main curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
 ```
 
 脚本能力：

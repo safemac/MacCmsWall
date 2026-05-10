@@ -54,7 +54,7 @@ build_release() {
     cp -a "${ROOT_DIR}/database" "${stage_dir}/database"
     cp -a "${ROOT_DIR}/logs" "${stage_dir}/logs"
 
-    for f in install.sh uninstall.sh update.sh README.md; do
+    for f in install.sh uninstall.sh update.sh onekey.sh README.md; do
         [ -f "${ROOT_DIR}/${f}" ] || die "缺少 ${f}"
         cp -a "${ROOT_DIR}/${f}" "${stage_dir}/${f}"
     done
