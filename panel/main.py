@@ -19,7 +19,15 @@ import traceback
 from typing import Any, Dict, Optional
 
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
+# 兼容两种结构：
+# 1) 开发结构：项目根目录/panel/main.py
+# 2) 部署结构：插件根目录/main.py
+if os.path.isdir(os.path.join(CURRENT_DIR, "scripts")):
+    BASE_DIR = CURRENT_DIR
+else:
+    BASE_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
+
 DB_PATH = os.path.join(BASE_DIR, "database", "maccmswall.db")
 LOG_FILE = os.path.join(BASE_DIR, "logs", "maccmswall.log")
 SCRIPTS_DIR = os.path.join(BASE_DIR, "scripts")
@@ -42,7 +50,7 @@ class main:  # noqa: N801  # 宝塔插件约定入口类名为 main
         """健康检查接口。"""
         return self._ok({
             "name": "MacCmsWall",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "time": int(time.time()),
             "db_path": DB_PATH,
             "log_file": LOG_FILE,

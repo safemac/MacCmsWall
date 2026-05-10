@@ -55,7 +55,7 @@ MacCmsWall
 ## 安装
 
 ```bash
-curl -fsSL https://github.com/xxx/MacCmsWall/raw/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/install.sh | bash
 ```
 
 脚本能力：
@@ -64,6 +64,20 @@ curl -fsSL https://github.com/xxx/MacCmsWall/raw/main/install.sh | bash
 - 自动安装依赖（git/curl/sqlite3/python3/e2fsprogs）
 - 自动拉取并部署插件
 - 自动初始化数据库
+- 更新时自动恢复历史数据库与日志
+- 自动尝试重启面板
+
+## 更新
+
+```bash
+bash /www/server/panel/plugin/MacCmsWall/update.sh
+```
+
+更新行为：
+
+- 从 GitHub 拉取最新代码
+- 复用 install.sh 执行安全升级
+- 自动保留数据库与日志
 - 自动尝试重启面板
 
 ## 卸载
@@ -101,5 +115,17 @@ bash /www/server/panel/plugin/MacCmsWall/uninstall.sh
 - 前端：HTML + CSS + JavaScript
 - 防护：Shell 调用 `chattr`
 - 默认目录：`/www/server/panel/plugin/MacCmsWall`
+
+## 分发构建
+
+```bash
+bash scripts/build_release.sh
+```
+
+构建产物位于 `dist/`：
+
+- `MacCmsWall-vX.Y.Z.tar.gz`
+- `MacCmsWall-vX.Y.Z.zip`（系统存在 zip 命令时）
+- `MacCmsWall-vX.Y.Z.sha256`（系统存在 sha256sum 时）
 
 > 注意：`chattr +i` 依赖底层文件系统支持（常见 ext4/xfs 等环境请先验证）。
