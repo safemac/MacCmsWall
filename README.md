@@ -108,8 +108,8 @@ bash scripts/build_release.sh
 
 ## Release Auto Info
 <!-- RELEASE_AUTO_START -->
-- Last release: v1.3.0
-- Built at: 2026-05-10 19:20:00 +08:00
+- Last release: v1.3.1
+- Built at: 2026-05-10 19:39:00 +08:00
 - One line command:
 
 ```bash
@@ -118,14 +118,14 @@ curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh |
 
 - MD5
 ```text
-f3ce33c62cd22f16e653cae7febd63e8  MacCmsWall-v1.3.0.zip
-3db653029cf9469c170892f0d7d66ecb  MacCmsWall-v1.3.0.tar.gz
+f44923f8dc8a043e29dc67bbb4923732  MacCmsWall-v1.3.1.zip
+db9bb19495a53e6ae6027b6e09c9c8ef  MacCmsWall-v1.3.1.tar.gz
 ```
 
 - SHA256
 ```text
-2308716d0813b6740732a62494b20c85260912b02f262d060a19b2f26d0a6785  MacCmsWall-v1.3.0.zip
-dd2d42429ffa368c629e48c3bac37583644a86e12fd3e8ef9ed1ac39839acf21  MacCmsWall-v1.3.0.tar.gz
+2039d12a575bcc719a79afdccebb965da6fa44048231dfe85c8dbfe7caf12b15  MacCmsWall-v1.3.1.zip
+b83f8e8350184b5fecfcdffe55c18c6fb75052a26d8633c193737413832c20ca  MacCmsWall-v1.3.1.tar.gz
 ```
 <!-- RELEASE_AUTO_END -->
 

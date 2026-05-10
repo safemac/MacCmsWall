@@ -50,7 +50,7 @@ class main:  # noqa: N801  # 宝塔插件约定入口类名为 main
         """健康检查接口。"""
         return self._ok({
             "name": "MacCmsWall",
-            "version": "1.3.0",
+            "version": "1.3.1",
             "time": int(time.time()),
             "db_path": DB_PATH,
             "log_file": LOG_FILE,

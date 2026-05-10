@@ -1,9 +1,9 @@
 {
   "name": "MacCmsWall",
   "title": "MacCmsWall",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "author": "safemac",
-  "type": "security",
+  "type": "tools",
   "date": "2026-05-09",
   "home": "https://github.com/safemac/MacCmsWall",
   "ps": "Website anti-tamper plugin based on chattr +i, supports BT and aaPanel.",

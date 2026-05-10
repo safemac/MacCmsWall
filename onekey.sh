@@ -10,7 +10,9 @@ set -o pipefail
 
 PLUGIN_NAME="MacCmsWall"
 PANEL_ROOT="/www/server/panel"
-PLUGIN_DIR="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
+PLUGIN_DIR_PRIMARY="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
+PLUGIN_DIR_ALT="${PANEL_ROOT}/plugin/maccmswall"
+PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 REPO_URL="${MACCMSWALL_REPO:-https://github.com/safemac/MacCmsWall.git}"
 REPO_BRANCH="${MACCMSWALL_BRANCH:-main}"
 RAW_BASE="${MACCMSWALL_RAW_BASE:-https://raw.githubusercontent.com/safemac/MacCmsWall/${REPO_BRANCH}}"
@@ -134,7 +136,28 @@ prepare_remote_checksum_manifest() {
     fi
 }
 
+detect_installed_plugin_dir() {
+    if [ -d "${PLUGIN_DIR_PRIMARY}" ] && [ -f "${PLUGIN_DIR_PRIMARY}/main.py" ]; then
+        PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
+        return 0
+    fi
+
+    if [ -d "${PLUGIN_DIR_ALT}" ] && [ -f "${PLUGIN_DIR_ALT}/main.py" ]; then
+        PLUGIN_DIR="${PLUGIN_DIR_ALT}"
+        return 0
+    fi
+
+    PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
+    return 1
+}
+
 resolve_action() {
+    local has_install=0
+
+    if detect_installed_plugin_dir; then
+        has_install=1
+    fi
+
     case "${ACTION}" in
         auto|install|update|uninstall)
             ;;
@@ -144,7 +167,7 @@ resolve_action() {
     esac
 
     if [ "${ACTION}" = "auto" ]; then
-        if [ -d "${PLUGIN_DIR}" ] && [ -f "${PLUGIN_DIR}/main.py" ]; then
+        if [ "${has_install}" -eq 1 ]; then
             ACTION="update"
         else
             ACTION="install"
@@ -152,13 +175,13 @@ resolve_action() {
     fi
 
     # 未安装时请求更新，自动转首次安装。
-    if [ "${ACTION}" = "update" ] && [ ! -d "${PLUGIN_DIR}" ]; then
+    if [ "${ACTION}" = "update" ] && [ "${has_install}" -eq 0 ]; then
         log "检测到插件未安装，自动切换为 install"
         ACTION="install"
     fi
 
     # 未安装时请求卸载，直接提示并结束。
-    if [ "${ACTION}" = "uninstall" ] && [ ! -d "${PLUGIN_DIR}" ]; then
+    if [ "${ACTION}" = "uninstall" ] && [ "${has_install}" -eq 0 ]; then
         log "插件未安装，无需卸载"
         exit 0
     fi

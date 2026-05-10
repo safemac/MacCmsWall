@@ -7,7 +7,9 @@ set -o pipefail
 
 PLUGIN_NAME="MacCmsWall"
 PANEL_ROOT="/www/server/panel"
-PLUGIN_DIR="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
+PLUGIN_DIR_PRIMARY="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
+PLUGIN_DIR_ALT="${PANEL_ROOT}/plugin/maccmswall"
+PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 DB_FILE="${PLUGIN_DIR}/database/maccmswall.db"
 LOG_FILE="${PLUGIN_DIR}/logs/maccmswall.log"
 UNLOCK_SCRIPT="${PLUGIN_DIR}/scripts/unlock.sh"
@@ -29,6 +31,20 @@ require_root() {
     if [ "$(id -u)" -ne 0 ]; then
         die "请使用 root 用户执行卸载"
     fi
+}
+
+select_plugin_dir() {
+    if [ -d "${PLUGIN_DIR_PRIMARY}" ]; then
+        PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
+    elif [ -d "${PLUGIN_DIR_ALT}" ]; then
+        PLUGIN_DIR="${PLUGIN_DIR_ALT}"
+    else
+        PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
+    fi
+
+    DB_FILE="${PLUGIN_DIR}/database/maccmswall.db"
+    LOG_FILE="${PLUGIN_DIR}/logs/maccmswall.log"
+    UNLOCK_SCRIPT="${PLUGIN_DIR}/scripts/unlock.sh"
 }
 
 unlock_all_sites() {
@@ -83,10 +99,6 @@ backup_data() {
 }
 
 restart_panel() {
-    if command -v bt >/dev/null 2>&1; then
-        bt restart >/dev/null 2>&1 && return 0
-    fi
-
     if [ -x "/etc/init.d/bt" ]; then
         /etc/init.d/bt restart >/dev/null 2>&1 && return 0
     fi
@@ -100,11 +112,16 @@ restart_panel() {
         systemctl restart aapanel >/dev/null 2>&1 && return 0
     fi
 
+    if command -v bt >/dev/null 2>&1; then
+        bt restart >/dev/null 2>&1 && return 0
+    fi
+
     return 1
 }
 
 main() {
     require_root
+    select_plugin_dir
 
     if [ ! -d "${PLUGIN_DIR}" ]; then
         die "插件目录不存在: ${PLUGIN_DIR}"
@@ -114,6 +131,10 @@ main() {
     backup_data
 
     rm -rf "${PLUGIN_DIR}" || die "删除插件目录失败"
+
+    # 清理兼容别名目录，避免卸载后残留死链接。
+    rm -rf "${PLUGIN_DIR_PRIMARY}" >/dev/null 2>&1 || true
+    rm -rf "${PLUGIN_DIR_ALT}" >/dev/null 2>&1 || true
 
     if restart_panel; then
         log "面板重启成功"

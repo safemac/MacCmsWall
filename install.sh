@@ -7,7 +7,9 @@ set -o pipefail
 
 PLUGIN_NAME="MacCmsWall"
 PANEL_ROOT="/www/server/panel"
-PLUGIN_DIR="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
+PLUGIN_DIR_PRIMARY="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
+PLUGIN_DIR_ALT="${PANEL_ROOT}/plugin/maccmswall"
+PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # 可通过环境变量覆盖仓库地址和分支，便于私有仓库部署。
@@ -44,6 +46,22 @@ require_root() {
     if [ "$(id -u)" -ne 0 ]; then
         die "请使用 root 用户执行安装"
     fi
+}
+
+# 兼容历史目录：若已安装在小写目录，后续操作直接复用。
+select_plugin_dir() {
+    if [ -d "${PLUGIN_DIR_PRIMARY}" ]; then
+        PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
+        return 0
+    fi
+
+    if [ -d "${PLUGIN_DIR_ALT}" ]; then
+        PLUGIN_DIR="${PLUGIN_DIR_ALT}"
+        log "检测到兼容目录: ${PLUGIN_DIR_ALT}"
+        return 0
+    fi
+
+    PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 }
 
 detect_panel() {
@@ -373,6 +391,30 @@ deploy_plugin() {
     chmod +x "${PLUGIN_DIR}/scripts"/*.sh >/dev/null 2>&1 || true
 }
 
+# 创建大小写目录别名，提升 BT/aaPanel 扫描兼容性。
+ensure_plugin_alias() {
+    local alias_dir=""
+
+    if [ "${PLUGIN_DIR}" = "${PLUGIN_DIR_PRIMARY}" ]; then
+        alias_dir="${PLUGIN_DIR_ALT}"
+    else
+        alias_dir="${PLUGIN_DIR_PRIMARY}"
+    fi
+
+    if [ -e "${alias_dir}" ]; then
+        return 0
+    fi
+
+    ln -s "${PLUGIN_DIR}" "${alias_dir}" >/dev/null 2>&1 && log "已创建兼容别名: ${alias_dir}" || true
+}
+
+# 强制刷新插件缓存，避免文件已部署但列表页未及时刷新。
+refresh_plugin_cache() {
+    rm -f "${PANEL_ROOT}/data/plugin.json" >/dev/null 2>&1 || true
+    rm -f "${PANEL_ROOT}/data/plugin_list.json" >/dev/null 2>&1 || true
+    touch "${PANEL_ROOT}/data/reload.pl" >/dev/null 2>&1 || true
+}
+
 init_database() {
     local db_file="${PLUGIN_DIR}/database/maccmswall.db"
     local init_sql="${PLUGIN_DIR}/database/init.sql"
@@ -427,10 +469,6 @@ SQL
 
 restart_panel() {
     # 尽量自动重启，失败时给出手动提示。
-    if command -v bt >/dev/null 2>&1; then
-        bt restart >/dev/null 2>&1 && return 0
-    fi
-
     if [ -x "/etc/init.d/bt" ]; then
         /etc/init.d/bt restart >/dev/null 2>&1 && return 0
     fi
@@ -444,6 +482,11 @@ restart_panel() {
         systemctl restart aapanel >/dev/null 2>&1 && return 0
     fi
 
+    # bt 命令放最后，避免在面板内置终端里中断当前会话。
+    if command -v bt >/dev/null 2>&1; then
+        bt restart >/dev/null 2>&1 && return 0
+    fi
+
     return 1
 }
 
@@ -451,14 +494,20 @@ main() {
     trap cleanup EXIT
 
     require_root
+    select_plugin_dir
     detect_panel
     install_dependencies
     prepare_source
     validate_source
     verify_source_integrity
     deploy_plugin
+    ensure_plugin_alias
     restore_persistent_data
     init_database
+    refresh_plugin_cache
+
+    log "插件已部署: ${PLUGIN_DIR}"
+    log "正在尝试刷新/重启面板服务..."
 
     if restart_panel; then
         log "面板重启成功"

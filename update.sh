@@ -7,7 +7,9 @@ set -o pipefail
 
 PLUGIN_NAME="MacCmsWall"
 PANEL_ROOT="/www/server/panel"
-PLUGIN_DIR="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
+PLUGIN_DIR_PRIMARY="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
+PLUGIN_DIR_ALT="${PANEL_ROOT}/plugin/maccmswall"
+PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 REPO_URL="${MACCMSWALL_REPO:-https://github.com/safemac/MacCmsWall.git}"
 REPO_BRANCH="${MACCMSWALL_BRANCH:-main}"
 CHECKSUM_FILE="${MACCMSWALL_CHECKSUM_FILE:-checksums.md5}"
@@ -33,6 +35,21 @@ require_root() {
     if [ "$(id -u)" -ne 0 ]; then
         die "请使用 root 用户执行更新"
     fi
+}
+
+select_plugin_dir() {
+    if [ -d "${PLUGIN_DIR_PRIMARY}" ]; then
+        PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
+        return 0
+    fi
+
+    if [ -d "${PLUGIN_DIR_ALT}" ]; then
+        PLUGIN_DIR="${PLUGIN_DIR_ALT}"
+        log "检测到兼容目录: ${PLUGIN_DIR_ALT}"
+        return 0
+    fi
+
+    PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 }
 
 md5_of_file() {
@@ -138,6 +155,7 @@ main() {
     trap cleanup EXIT
 
     require_root
+    select_plugin_dir
 
     if [ ! -d "${PANEL_ROOT}" ]; then
         die "未检测到面板目录 ${PANEL_ROOT}"
