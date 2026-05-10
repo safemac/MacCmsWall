@@ -8,6 +8,7 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DIST_DIR="${ROOT_DIR}/dist"
+SKILL_FILE="${SCRIPT_DIR}/release_skill.sh"
 WORK_DIR=""
 
 log() {
@@ -18,6 +19,10 @@ die() {
     log "ERROR: $*"
     exit 1
 }
+
+[ -f "${SKILL_FILE}" ] || die "缺少 ${SKILL_FILE}"
+# shellcheck source=/dev/null
+source "${SKILL_FILE}"
 
 cleanup() {
     if [ -n "${WORK_DIR}" ] && [ -d "${WORK_DIR}" ]; then
@@ -38,8 +43,14 @@ get_version() {
 
 build_release() {
     local version package_name stage_root stage_dir
+    local script_md5_file tar_file zip_file artifact_md5_file artifact_sha256_file
     version="$(get_version)"
     package_name="MacCmsWall-v${version}"
+    script_md5_file="${ROOT_DIR}/checksums.md5"
+    artifact_md5_file="${DIST_DIR}/${package_name}.md5"
+    artifact_sha256_file="${DIST_DIR}/${package_name}.sha256"
+
+    release_skill_generate_script_md5_manifest "${ROOT_DIR}" "${script_md5_file}" || die "生成脚本 MD5 清单失败"
 
     mkdir -p "${DIST_DIR}"
     WORK_DIR="$(mktemp -d /tmp/maccmswall-release.XXXXXX)"
@@ -54,28 +65,32 @@ build_release() {
     cp -a "${ROOT_DIR}/database" "${stage_dir}/database"
     cp -a "${ROOT_DIR}/logs" "${stage_dir}/logs"
 
-    for f in install.sh uninstall.sh update.sh onekey.sh README.md; do
+    for f in install.sh uninstall.sh update.sh onekey.sh checksums.md5 README.md; do
         [ -f "${ROOT_DIR}/${f}" ] || die "缺少 ${f}"
         cp -a "${ROOT_DIR}/${f}" "${stage_dir}/${f}"
     done
 
-    (cd "${stage_root}" && tar -czf "${DIST_DIR}/${package_name}.tar.gz" "MacCmsWall") || die "生成 tar.gz 失败"
+    tar_file="${DIST_DIR}/${package_name}.tar.gz"
+    zip_file="${DIST_DIR}/${package_name}.zip"
+
+    (cd "${stage_root}" && tar -czf "${tar_file}" "MacCmsWall") || die "生成 tar.gz 失败"
 
     if command -v zip >/dev/null 2>&1; then
-        (cd "${stage_root}" && zip -qr "${DIST_DIR}/${package_name}.zip" "MacCmsWall") || die "生成 zip 失败"
+        (cd "${stage_root}" && zip -qr "${zip_file}" "MacCmsWall") || die "生成 zip 失败"
     else
         log "未检测到 zip 命令，跳过 zip 产物"
+        zip_file=""
     fi
 
-    if command -v sha256sum >/dev/null 2>&1; then
-        (
-            cd "${DIST_DIR}" || exit 1
-            sha256sum "${package_name}.tar.gz" > "${package_name}.sha256"
-            if [ -f "${package_name}.zip" ]; then
-                sha256sum "${package_name}.zip" >> "${package_name}.sha256"
-            fi
-        ) || die "生成校验文件失败"
+    if [ -n "${zip_file}" ] && [ -f "${zip_file}" ]; then
+        release_skill_generate_artifact_md5 "${artifact_md5_file}" "${zip_file}" "${tar_file}" || die "生成产物 MD5 失败"
+        release_skill_generate_artifact_sha256 "${artifact_sha256_file}" "${zip_file}" "${tar_file}" || die "生成产物 SHA256 失败"
+    else
+        release_skill_generate_artifact_md5 "${artifact_md5_file}" "${tar_file}" || die "生成产物 MD5 失败"
+        release_skill_generate_artifact_sha256 "${artifact_sha256_file}" "${tar_file}" || die "生成产物 SHA256 失败"
     fi
+
+    release_skill_update_readme_release_block "${ROOT_DIR}/README.md" "${version}" "${artifact_md5_file}" "${artifact_sha256_file}" || die "自动更新 README 失败"
 
     log "分发构建完成: ${DIST_DIR}"
 }

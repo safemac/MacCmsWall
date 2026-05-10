@@ -1,73 +1,21 @@
 # MacCmsWall
 
-MacCmsWall 是一个基于 Linux `chattr +i` 的网站防篡改插件，面向 BT / aaPanel 第三方插件部署场景。
+MacCmsWall 是一个基于 Linux chattr +i 的网站防篡改插件，面向 BT / aaPanel 第三方插件部署场景。
 
-## 核心目标
-
-当前版本只解决一件事：网站文件不可篡改。
-
-- 默认启用强防护（`chattr +i`）
-- 支持严格全锁模式
-- 支持 MACCMS 兼容模式
-- 支持 Web UI 管理后台
-- 支持 GitHub 一键安装
-
-## 防护模式
-
-1. 严格全锁模式
-- 对站点扫描到的全部文件执行 `chattr +i`
-
-2. MACCMS 兼容模式
-- 自动跳过以下目录：
-- `/runtime/`
-- `/cache/`
-- `/static/upload/`
-- `/upload/`
-- 其余文件执行 `chattr +i`
-
-## 项目结构
-
-```text
-MacCmsWall
-├── onekey.sh
-├── install.sh
-├── uninstall.sh
-├── README.md
-├── panel/
-│   ├── info.json
-│   ├── index.html
-│   ├── main.py
-│   ├── static/
-│   │   ├── style.css
-│   │   └── app.js
-│   ├── templates/
-│   └── data/
-├── scripts/
-│   ├── common.sh
-│   ├── lock.sh
-│   ├── unlock.sh
-│   ├── scan.sh
-│   └── restore.sh
-├── database/
-│   └── init.sql
-└── logs/
-```
-
-## 安装
+## 一键命令（默认智能）
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
 ```
 
-## 一键傻瓜智能模式（推荐）
-
-默认就是一行命令自动处理：
+默认行为：
 
 - 未安装时自动安装
 - 已安装时自动更新
 - 自动识别 BT / aaPanel
+- 自动执行 MD5 完整性校验
 
-如需指定动作，可在同一行增加环境变量：
+可选指定动作：
 
 ```bash
 MACCMSWALL_ACTION=install curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
@@ -75,69 +23,75 @@ MACCMSWALL_ACTION=update curl -fsSL https://raw.githubusercontent.com/safemac/Ma
 MACCMSWALL_ACTION=uninstall curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
 ```
 
-支持自定义分支与仓库：
+## 防护模式
 
-```bash
-MACCMSWALL_REPO=https://github.com/safemac/MacCmsWall.git MACCMSWALL_BRANCH=main curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
+1. 严格全锁模式
+- 对站点扫描到的全部文件执行 chattr +i
+
+2. MACCMS 兼容模式
+- 自动跳过目录：
+- /runtime/
+- /cache/
+- /static/upload/
+- /upload/
+- 其余文件执行 chattr +i
+
+## 项目结构
+
+```text
+MacCmsWall
+├── checksums.md5
+├── onekey.sh
+├── install.sh
+├── update.sh
+├── uninstall.sh
+├── README.md
+├── panel/
+│   ├── info.json
+│   ├── main.py
+│   ├── index.html
+│   ├── icon.png
+│   ├── static/
+│   ├── templates/
+│   └── data/
+├── scripts/
+│   ├── common.sh
+│   ├── lock.sh
+│   ├── unlock.sh
+│   ├── scan.sh
+│   ├── restore.sh
+│   ├── release_skill.sh
+│   └── build_release.sh
+├── database/
+│   └── init.sql
+├── logs/
+└── dist/
 ```
 
-脚本能力：
+## 执行链路
 
-- 自动识别 BT / aaPanel
-- 自动安装依赖（git/curl/sqlite3/python3/e2fsprogs）
-- 自动拉取并部署插件
-- 自动初始化数据库
-- 更新时自动恢复历史数据库与日志
-- 自动尝试重启面板
+- onekey.sh：统一入口，自动判断 install / update / uninstall
+- install.sh：安装与升级部署（带数据保留）
+- update.sh：拉取新版本后复用 install.sh 升级
+- uninstall.sh：卸载前自动尝试解锁并备份数据
 
-## 更新
+## MD5 完整性策略
 
-```bash
-bash /www/server/panel/plugin/MacCmsWall/update.sh
-```
+- onekey.sh、install.sh、update.sh 在执行关键脚本前，会读取 checksums.md5 做显式 MD5 校验
+- 校验失败（疑似被篡改）会立即拒绝执行
+- 打包阶段自动刷新 checksums.md5，避免发布脚本哈希过期
 
-更新行为：
+## 打包 Skill
 
-- 从 GitHub 拉取最新代码
-- 复用 install.sh 执行安全升级
-- 自动保留数据库与日志
-- 自动尝试重启面板
+- scripts/release_skill.sh：封装打包时的自动化逻辑
+- scripts/build_release.sh：调用 release_skill.sh，执行完整分发构建
 
-## 卸载
+每次打包自动完成：
 
-```bash
-bash /www/server/panel/plugin/MacCmsWall/uninstall.sh
-```
-
-卸载行为：
-
-- 自动尝试解锁已保护站点
-- 备份数据库与日志到 `/tmp/MacCmsWall_backup_时间戳`
-- 删除插件目录
-- 自动尝试重启面板
-
-## API 概览（panel/main.py）
-
-- `health`
-- `get_modes`
-- `get_dashboard`
-- `list_sites`
-- `add_site`
-- `update_mode`
-- `enable_protection`
-- `disable_protection`
-- `rescan_site`
-- `relock_site`
-- `remove_site`
-- `get_logs`
-- `clear_logs`
-
-## 开发说明
-
-- 后端：Python3 + SQLite
-- 前端：HTML + CSS + JavaScript
-- 防护：Shell 调用 `chattr`
-- 默认目录：`/www/server/panel/plugin/MacCmsWall`
+- 刷新根目录 checksums.md5
+- 生成 dist/MacCmsWall-vX.Y.Z.md5
+- 生成 dist/MacCmsWall-vX.Y.Z.sha256
+- 自动更新本 README 的 Release Auto Info 区块
 
 ## 分发构建
 
@@ -145,10 +99,34 @@ bash /www/server/panel/plugin/MacCmsWall/uninstall.sh
 bash scripts/build_release.sh
 ```
 
-构建产物位于 `dist/`：
+产物：
 
-- `MacCmsWall-vX.Y.Z.tar.gz`
-- `MacCmsWall-vX.Y.Z.zip`（系统存在 zip 命令时）
-- `MacCmsWall-vX.Y.Z.sha256`（系统存在 sha256sum 时）
+- MacCmsWall-vX.Y.Z.zip
+- MacCmsWall-vX.Y.Z.tar.gz
+- MacCmsWall-vX.Y.Z.md5
+- MacCmsWall-vX.Y.Z.sha256
 
-> 注意：`chattr +i` 依赖底层文件系统支持（常见 ext4/xfs 等环境请先验证）。
+## Release Auto Info
+<!-- RELEASE_AUTO_START -->
+- Last release: v1.3.0
+- Built at: 2026-05-10 19:20:00 +08:00
+- One line command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/safemac/MacCmsWall/main/onekey.sh | bash
+```
+
+- MD5
+```text
+f3ce33c62cd22f16e653cae7febd63e8  MacCmsWall-v1.3.0.zip
+3db653029cf9469c170892f0d7d66ecb  MacCmsWall-v1.3.0.tar.gz
+```
+
+- SHA256
+```text
+2308716d0813b6740732a62494b20c85260912b02f262d060a19b2f26d0a6785  MacCmsWall-v1.3.0.zip
+dd2d42429ffa368c629e48c3bac37583644a86e12fd3e8ef9ed1ac39839acf21  MacCmsWall-v1.3.0.tar.gz
+```
+<!-- RELEASE_AUTO_END -->
+
+> 注意：chattr +i 依赖底层文件系统支持（例如 ext4/xfs），请先在目标服务器验证。

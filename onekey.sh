@@ -15,7 +15,9 @@ REPO_URL="${MACCMSWALL_REPO:-https://github.com/safemac/MacCmsWall.git}"
 REPO_BRANCH="${MACCMSWALL_BRANCH:-main}"
 RAW_BASE="${MACCMSWALL_RAW_BASE:-https://raw.githubusercontent.com/safemac/MacCmsWall/${REPO_BRANCH}}"
 ACTION="${MACCMSWALL_ACTION:-auto}"
+CHECKSUM_FILE="${MACCMSWALL_CHECKSUM_FILE:-checksums.md5}"
 WORK_DIR=""
+REMOTE_CHECKSUM_PATH=""
 
 log() {
     printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -69,6 +71,69 @@ download_file() {
     return 0
 }
 
+md5_of_file() {
+    local file_path="$1"
+
+    if command -v md5sum >/dev/null 2>&1; then
+        md5sum "${file_path}" | awk '{print $1}'
+        return 0
+    fi
+
+    if command -v openssl >/dev/null 2>&1; then
+        openssl md5 "${file_path}" | awk '{print $NF}'
+        return 0
+    fi
+
+    if command -v md5 >/dev/null 2>&1; then
+        md5 -q "${file_path}"
+        return 0
+    fi
+
+    die "系统缺少 md5sum/openssl/md5，无法执行完整性校验"
+}
+
+expected_md5_from_manifest() {
+    local manifest_file="$1"
+    local target_name="$2"
+
+    awk -v n="${target_name}" '$2==n{print $1; exit}' "${manifest_file}"
+}
+
+verify_file_md5() {
+    local manifest_file="$1"
+    local file_path="$2"
+    local short_name="$3"
+    local expected actual
+
+    [ -f "${manifest_file}" ] || die "缺少校验清单: ${manifest_file}"
+    [ -f "${file_path}" ] || die "缺少待校验文件: ${file_path}"
+
+    expected="$(expected_md5_from_manifest "${manifest_file}" "${short_name}" | tr 'A-Z' 'a-z')"
+    [ -n "${expected}" ] || die "校验清单中缺少 ${short_name} 的 MD5"
+
+    actual="$(md5_of_file "${file_path}" | tr 'A-Z' 'a-z')"
+    [ -n "${actual}" ] || die "计算 ${short_name} MD5 失败"
+
+    if [ "${expected}" != "${actual}" ]; then
+        die "检测到脚本篡改: ${short_name}，拒绝执行"
+    fi
+}
+
+prepare_remote_checksum_manifest() {
+    local remote_url
+
+    if [ -n "${REMOTE_CHECKSUM_PATH}" ] && [ -f "${REMOTE_CHECKSUM_PATH}" ]; then
+        return 0
+    fi
+
+    REMOTE_CHECKSUM_PATH="${WORK_DIR}/${CHECKSUM_FILE}"
+    remote_url="${RAW_BASE}/${CHECKSUM_FILE}"
+
+    if ! download_file "${remote_url}" "${REMOTE_CHECKSUM_PATH}"; then
+        die "下载校验清单失败: ${remote_url}"
+    fi
+}
+
 resolve_action() {
     case "${ACTION}" in
         auto|install|update|uninstall)
@@ -102,8 +167,15 @@ resolve_action() {
 run_local_if_exists() {
     local script_name="$1"
     local local_script="${PLUGIN_DIR}/${script_name}"
+    local local_manifest="${PLUGIN_DIR}/${CHECKSUM_FILE}"
 
     if [ -x "${local_script}" ]; then
+        if [ ! -f "${local_manifest}" ]; then
+            log "本地缺少校验清单，改用远程已校验脚本: ${script_name}"
+            return 1
+        fi
+
+        verify_file_md5 "${local_manifest}" "${local_script}" "${script_name}"
         MACCMSWALL_REPO="${REPO_URL}" MACCMSWALL_BRANCH="${REPO_BRANCH}" bash "${local_script}"
         return $?
     fi
@@ -116,9 +188,13 @@ run_remote_script() {
     local remote_url="${RAW_BASE}/${script_name}"
     local script_file="${WORK_DIR}/${script_name}"
 
+    prepare_remote_checksum_manifest
+
     if ! download_file "${remote_url}" "${script_file}"; then
         die "下载脚本失败: ${remote_url}"
     fi
+
+    verify_file_md5 "${REMOTE_CHECKSUM_PATH}" "${script_file}" "${script_name}"
 
     chmod +x "${script_file}" >/dev/null 2>&1 || true
     MACCMSWALL_REPO="${REPO_URL}" MACCMSWALL_BRANCH="${REPO_BRANCH}" bash "${script_file}"
