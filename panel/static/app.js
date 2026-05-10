@@ -7,7 +7,8 @@
  */
 
 (() => {
-    const API_PREFIX = "/plugin?action=a&name=MacCmsWall&s=";
+    const PLUGIN_NAME_CANDIDATES = ["maccmswall", "MacCmsWall"];
+    let activePluginName = PLUGIN_NAME_CANDIDATES[0];
     const state = {
         sites: [],
         dashboard: {},
@@ -38,14 +39,18 @@
         logTableBody: document.getElementById("logTableBody"),
     };
 
+    function buildApiPrefix(pluginName) {
+        return `/plugin?action=a&name=${encodeURIComponent(pluginName)}&s=`;
+    }
+
     // 统一 API 请求：发送 x-www-form-urlencoded，兼容面板插件路由。
-    async function callApi(method, payload = {}) {
+    async function callApiWithPlugin(pluginName, method, payload = {}) {
         const body = new URLSearchParams();
         Object.keys(payload).forEach((key) => {
             body.append(key, payload[key]);
         });
 
-        const res = await fetch(`${API_PREFIX}${encodeURIComponent(method)}`, {
+        const res = await fetch(`${buildApiPrefix(pluginName)}${encodeURIComponent(method)}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -67,6 +72,26 @@
         }
 
         return json.data || {};
+    }
+
+    async function callApi(method, payload = {}) {
+        return callApiWithPlugin(activePluginName, method, payload);
+    }
+
+    async function detectPluginName() {
+        let lastError = null;
+
+        for (const pluginName of PLUGIN_NAME_CANDIDATES) {
+            try {
+                await callApiWithPlugin(pluginName, "health");
+                activePluginName = pluginName;
+                return;
+            } catch (err) {
+                lastError = err;
+            }
+        }
+
+        throw lastError || new Error("无法识别插件 API，请确认插件目录和名称是否一致");
     }
 
     function showToast(message, isError = false) {
@@ -371,6 +396,7 @@
 
     async function bootstrap() {
         bindEvents();
+        await detectPluginName();
         await loadHealth();
         await loadMainData();
         switchTab("dashboard");

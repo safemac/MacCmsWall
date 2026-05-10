@@ -5,10 +5,10 @@
 set -u
 set -o pipefail
 
-PLUGIN_NAME="MacCmsWall"
+PLUGIN_NAME="maccmswall"
 PANEL_ROOT="/www/server/panel"
 PLUGIN_DIR_PRIMARY="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
-PLUGIN_DIR_ALT="${PANEL_ROOT}/plugin/maccmswall"
+PLUGIN_DIR_ALT="${PANEL_ROOT}/plugin/MacCmsWall"
 PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 DB_FILE="${PLUGIN_DIR}/database/maccmswall.db"
 LOG_FILE="${PLUGIN_DIR}/logs/maccmswall.log"

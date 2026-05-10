@@ -56,7 +56,7 @@ build_release() {
     WORK_DIR="$(mktemp -d /tmp/maccmswall-release.XXXXXX)"
 
     stage_root="${WORK_DIR}/stage"
-    stage_dir="${stage_root}/MacCmsWall"
+    stage_dir="${stage_root}/maccmswall"
     mkdir -p "${stage_dir}"
 
     # 分发包直接输出 BT/aaPanel 插件根目录结构。
@@ -73,10 +73,10 @@ build_release() {
     tar_file="${DIST_DIR}/${package_name}.tar.gz"
     zip_file="${DIST_DIR}/${package_name}.zip"
 
-    (cd "${stage_root}" && tar -czf "${tar_file}" "MacCmsWall") || die "生成 tar.gz 失败"
+    (cd "${stage_root}" && tar -czf "${tar_file}" "maccmswall") || die "生成 tar.gz 失败"
 
     if command -v zip >/dev/null 2>&1; then
-        (cd "${stage_root}" && zip -qr "${zip_file}" "MacCmsWall") || die "生成 zip 失败"
+        (cd "${stage_root}" && zip -qr "${zip_file}" "maccmswall") || die "生成 zip 失败"
     else
         log "未检测到 zip 命令，跳过 zip 产物"
         zip_file=""

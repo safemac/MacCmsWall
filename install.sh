@@ -5,10 +5,11 @@
 set -u
 set -o pipefail
 
-PLUGIN_NAME="MacCmsWall"
+PLUGIN_NAME="maccmswall"
+PLUGIN_TITLE="MacCmsWall"
 PANEL_ROOT="/www/server/panel"
 PLUGIN_DIR_PRIMARY="${PANEL_ROOT}/plugin/${PLUGIN_NAME}"
-PLUGIN_DIR_ALT="${PANEL_ROOT}/plugin/maccmswall"
+PLUGIN_DIR_ALT="${PANEL_ROOT}/plugin/MacCmsWall"
 PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -48,7 +49,7 @@ require_root() {
     fi
 }
 
-# 兼容历史目录：若已安装在小写目录，后续操作直接复用。
+# 兼容历史目录：若已安装在旧目录，后续操作直接复用。
 select_plugin_dir() {
     if [ -d "${PLUGIN_DIR_PRIMARY}" ]; then
         PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
@@ -408,6 +409,16 @@ ensure_plugin_alias() {
     ln -s "${PLUGIN_DIR}" "${alias_dir}" >/dev/null 2>&1 && log "已创建兼容别名: ${alias_dir}" || true
 }
 
+# 在 Linux 侧补齐历史入口文件名，兼容 name=MacCmsWall 的旧路由。
+ensure_legacy_python_entry() {
+    local lower_entry="${PLUGIN_DIR}/maccmswall_main.py"
+    local legacy_entry="${PLUGIN_DIR}/MacCmsWall_main.py"
+
+    if [ -f "${lower_entry}" ] && [ ! -f "${legacy_entry}" ]; then
+        cp -a "${lower_entry}" "${legacy_entry}" >/dev/null 2>&1 || true
+    fi
+}
+
 # 强制刷新插件缓存，避免文件已部署但列表页未及时刷新。
 refresh_plugin_cache() {
     rm -f "${PANEL_ROOT}/data/plugin.json" >/dev/null 2>&1 || true
@@ -502,6 +513,7 @@ main() {
     verify_source_integrity
     deploy_plugin
     ensure_plugin_alias
+    ensure_legacy_python_entry
     restore_persistent_data
     init_database
     refresh_plugin_cache
@@ -517,7 +529,7 @@ main() {
 
     log "安装完成"
     log "插件目录: ${PLUGIN_DIR}"
-    log "请在面板左侧菜单进入 ${PLUGIN_NAME}"
+    log "请在面板左侧菜单进入 ${PLUGIN_TITLE}"
 }
 
 main "$@"
