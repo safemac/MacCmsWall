@@ -23,6 +23,7 @@ PKG_MANAGER=""
 WORK_DIR=""
 SOURCE_DIR=""
 BACKUP_DIR=""
+BACKUP_ROOT="${MACCMSWALL_BACKUP_ROOT:-/www/backup/maccmswall}"
 
 log() {
     printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -57,6 +58,7 @@ select_plugin_dir() {
     fi
 
     if [ -d "${PLUGIN_DIR_ALT}" ]; then
+
         PLUGIN_DIR="${PLUGIN_DIR_ALT}"
         log "检测到兼容目录: ${PLUGIN_DIR_ALT}"
         return 0
@@ -64,6 +66,7 @@ select_plugin_dir() {
 
     PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 }
+
 
 # 判断 install.sh 是否运行在面板插件目录中。
 is_plugin_runtime_dir() {
@@ -91,6 +94,42 @@ is_plugin_root_layout() {
     fi
 
     return 0
+}
+
+ensure_backup_root() {
+    if mkdir -p "${BACKUP_ROOT}" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    BACKUP_ROOT="/tmp/maccmswall-backups"
+    mkdir -p "${BACKUP_ROOT}" >/dev/null 2>&1 || die "创建备份目录失败: ${BACKUP_ROOT}"
+}
+
+# 迁移旧目录和旧备份，避免插件目录出现重复副本导致重复识别。
+normalize_plugin_layout() {
+    local old_backup legacy_backup
+
+    ensure_backup_root
+
+    for old_backup in "${PANEL_ROOT}/plugin"/MacCmsWall_backup_* "${PANEL_ROOT}/plugin"/maccmswall_backup_*; do
+        [ -d "${old_backup}" ] || continue
+        mv "${old_backup}" "${BACKUP_ROOT}/$(basename "${old_backup}")" >/dev/null 2>&1 || true
+    done
+
+    if [ -L "${PLUGIN_DIR_ALT}" ]; then
+        rm -f "${PLUGIN_DIR_ALT}" >/dev/null 2>&1 || true
+    fi
+
+    if [ ! -d "${PLUGIN_DIR_PRIMARY}" ] && [ -d "${PLUGIN_DIR_ALT}" ]; then
+        mv "${PLUGIN_DIR_ALT}" "${PLUGIN_DIR_PRIMARY}" || die "迁移旧目录失败: ${PLUGIN_DIR_ALT} -> ${PLUGIN_DIR_PRIMARY}"
+        log "已迁移旧目录到标准目录: ${PLUGIN_DIR_PRIMARY}"
+    elif [ -d "${PLUGIN_DIR_PRIMARY}" ] && [ -d "${PLUGIN_DIR_ALT}" ]; then
+        legacy_backup="${BACKUP_ROOT}/MacCmsWall_legacy_$(date +%s)_$$"
+        mv "${PLUGIN_DIR_ALT}" "${legacy_backup}" >/dev/null 2>&1 || true
+        warn "检测到重复目录，已迁移旧目录到: ${legacy_backup}"
+    fi
+
+    PLUGIN_DIR="${PLUGIN_DIR_PRIMARY}"
 }
 
 detect_panel() {
@@ -406,7 +445,9 @@ deploy_plugin() {
     fi
 
     if [ -d "${PLUGIN_DIR}" ]; then
-        local backup_dir="${PLUGIN_DIR}_backup_$(date +%s)"
+        local backup_dir=""
+        ensure_backup_root
+        backup_dir="${BACKUP_ROOT}/$(basename "${PLUGIN_DIR}")_backup_$(date +%s)_$$"
         warn "检测到旧版本，先备份到 ${backup_dir}"
         mv "${PLUGIN_DIR}" "${backup_dir}" || die "备份旧版本失败"
         BACKUP_DIR="${backup_dir}"
@@ -422,6 +463,10 @@ deploy_plugin() {
 
 # 创建大小写目录别名，提升 BT/aaPanel 扫描兼容性。
 ensure_plugin_alias() {
+    if [ "${MACCMSWALL_CREATE_ALIAS:-0}" != "1" ]; then
+        return 0
+    fi
+
     local alias_dir=""
 
     if [ "${PLUGIN_DIR}" = "${PLUGIN_DIR_PRIMARY}" ]; then
@@ -483,6 +528,9 @@ run_panel_local_install() {
     else
         select_plugin_dir
     fi
+
+    ensure_backup_root
+    normalize_plugin_layout
 
     is_plugin_root_layout "${PLUGIN_DIR}" || die "插件目录结构不完整: ${PLUGIN_DIR}"
 
@@ -629,6 +677,7 @@ main() {
     require_root
     select_plugin_dir
     detect_panel
+    normalize_plugin_layout
     install_dependencies
     prepare_source
     validate_source

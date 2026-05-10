@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MacCmsWall 防篡改管理</title>
+    <link rel="stylesheet" href="/maccmswall/static/style.css" />
+    <link rel="stylesheet" href="/MacCmsWall/static/style.css" />
     <link rel="stylesheet" href="./static/style.css" />
 </head>
 <body>
@@ -155,6 +157,30 @@
     <!-- 浮动消息 -->
     <div id="toast" class="toast"></div>
 
-    <script src="./static/app.js"></script>
+    <script type="text/javascript">
+        (function () {
+            var candidates = [
+                "/maccmswall/static/app.js",
+                "/MacCmsWall/static/app.js",
+                "./static/app.js"
+            ];
+
+            function loadScript(index) {
+                if (index >= candidates.length) {
+                    return;
+                }
+
+                var script = document.createElement("script");
+                script.src = candidates[index];
+                script.defer = true;
+                script.onerror = function () {
+                    loadScript(index + 1);
+                };
+                document.body.appendChild(script);
+            }
+
+            loadScript(0);
+        })();
+    </script>
 </body>
 </html>
